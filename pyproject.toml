@@ -31,5 +31,8 @@ radifox-qa = "radifox.qa.run:run"
 [tool.setuptools.packages.find]
 include = ["radifox.*"]
 
+[tool.setuptools.package-data]
+"radifox.qa" = ["templates/*.html"]
+
 [miniver]
 package_path = "radifox/qa"
