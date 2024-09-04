@@ -22,7 +22,7 @@ dependencies = [
     "flask",
     "gunicorn",
     "pyyaml",
-    "radifox@git+https://github.com/jh-mipc/radifox#egg=sep-qa-and-fix",
+    "radifox>=2.1.0",
 ]
 
 [project.scripts]
