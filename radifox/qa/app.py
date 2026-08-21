@@ -109,8 +109,10 @@ def set_mode(mode):
 def qa_page(project_id, subject_id, session_id):
     if session.get("qa_mode", "conversion") == "conversion":
         return conversion_qa(project_id, subject_id, session_id)
-    else:
+    elif session.get("qa_mode", "processing") == "processing":
         return processing_qa(project_id, subject_id, session_id)
+    else:
+        return rapide_qa(project_id, subject_id, session_id)
 
 
 def conversion_qa(project_id, subject_id, session_id):
@@ -329,6 +331,115 @@ def processing_qa(project_id, subject_id, session_id):
     return render_template(
         "processing.html",
         processing_results=prov_objs,
+        project_id=project_id,
+        subject_id=subject_id,
+        session_id=session_id,
+        next_session=next_session,
+        prev_session=prev_session,
+        prev_subject=prev_subject,
+        next_subject=next_subject,
+    )
+
+
+def rapide_qa(project_id, subject_id, session_id):
+    # Get subject and session information
+    session_dir = DATA_DIR / project_id / subject_id / session_id
+    subjects = sorted(
+        [
+            pat.name
+            for pat in (DATA_DIR / project_id).glob("*")
+            if pat.is_dir() and not pat.name.startswith(".")
+        ]
+    )
+    pat_idx = subjects.index(subject_id)
+    prev_subject = subjects[pat_idx - 1] if pat_idx > 0 else None
+    next_subject = subjects[pat_idx + 1] if pat_idx < (len(subjects) - 1) else None
+    sessions = sorted(
+        [
+            session_path.name
+            for session_path in (DATA_DIR / project_id / subject_id).glob("*")
+            if session_path.is_dir() and not session_path.name.startswith(".")
+        ]
+    )
+    session_idx = sessions.index(session_id)
+    prev_session = sessions[session_idx - 1] if session_idx > 0 else None
+    next_session = sessions[session_idx + 1] if session_idx < (len(sessions) - 1) else None
+
+    # Get processing information
+    prov_files = list(
+        itertools.chain(
+            (session_dir / "stage").glob("*haca3.prov"),
+            (session_dir / "stage").glob("*slant*.prov"),
+            (session_dir / "stage").glob("*cruise*.prov"),
+            (session_dir / "proc").glob("*haca3.prov"),
+            (session_dir / "proc").glob("*slant*.prov"),
+            (session_dir / "proc").glob("*cruise*.prov"),
+        )
+    )
+    rapide_objs = defaultdict(dict)
+    for provfile in prov_files:
+        prov_obj = yaml.safe_load(provfile.read_text())
+        rapide_objs[prov_obj["Module"]][prov_obj["Id"]] = prov_obj
+    rapide_objs = {
+        k: v
+        for k, v in sorted(
+            rapide_objs.items(), key=lambda x: min(value["StartTime"] for value in x[1].values())
+        )
+    }
+
+    qa_filepath = (
+            DATA_DIR
+            / project_id
+            / subject_id
+            / session_id
+            / "_".join([subject_id, session_id, "QA.yml"])
+    )
+    qa_data = yaml.safe_load_all(qa_filepath.read_text()) if qa_filepath.exists() else []
+    qa_dict = {}
+    for entry in qa_data:
+        qa_dict[entry["file"]] = entry["status"]
+
+    for module_str, provs in rapide_objs.items():
+        for idstr, prov_obj in provs.items():
+            prov_obj["OutputQA"] = {}
+            for key, val in prov_obj["Outputs"].items():
+                prov_obj["OutputQA"][key] = {}
+                if not isinstance(val, list):
+                    val = [val]
+                for v in val:
+                    filestr = v.split(":")[0]
+                    existing_qa = qa_dict.get(filestr, "")
+                    filepath = session_dir.parent.parent / filestr
+                    qa_path = (
+                        filepath.parent.parent
+                        / "qa"
+                        / module_str.split(":")[0]
+                        / (filepath.name.split('.')[0] + '.png')
+                    )
+                    if filestr.endswith(NO_QA_SUFFIXES) or not qa_path.exists():
+                        continue
+                    display_name = (
+                        filestr.split("_")[2]
+                        + "_"
+                        + " / ".join(filestr.split(".")[0].split("_")[3:])
+                    )
+                    prov_obj["OutputQA"][key][filepath.name.split('.')[0]] = (
+                        (
+                            qa_path.parent.parent.parent.name,
+                            qa_path.parent.name,
+                            qa_path.name,
+                            display_name,
+                            existing_qa,
+                        )
+                        if qa_path.exists()
+                        else None
+                    )
+                if len(prov_obj["OutputQA"][key]) == 0:
+                    del prov_obj["OutputQA"][key]
+
+    return render_template(
+        "rapide.html",
+        rapide_results=rapide_objs,
         project_id=project_id,
         subject_id=subject_id,
         session_id=session_id,
