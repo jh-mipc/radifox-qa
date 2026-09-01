@@ -234,6 +234,7 @@ def conversion_qa(project_id, subject_id, session_id):
 
 
 QA_SUFFIXES = (".nii.gz", ".gii")
+NO_QA_SUFFIXES = (".mat",)
 
 
 def processing_qa(project_id, subject_id, session_id):
