@@ -53,9 +53,6 @@
       <li class="nav-item {% if session['qa_mode'] == 'processing' %}active{% endif %}">
         <a class="nav-link" href="{{ url_for('set_mode', mode='processing') }}">Processing</a>
       </li>
-      <li class="nav-item {% if session['qa_mode'] == 'rapide' %}active{% endif %}">
-        <a class="nav-link" href="{{ url_for('set_mode', mode='rapide') }}">Rapid&eacute;</a>
-      </li>
     </ul>
     <span class="navbar-text">{{ project_id | upper() }}</span>
   </div>
