@@ -18,7 +18,7 @@ from flask import (
 )
 import yaml
 
-from ..conversion.json import JSONObjectEncoder, NoIndent
+from radifox.records.json import JSONObjectEncoder, NoIndent
 
 DATA_DIR = Path(os.environ.get("QA_DATA_DIR", "/data")).resolve()
 SECRET_KEY = os.environ.get("QA_SECRET_KEY", secrets.token_urlsafe())
